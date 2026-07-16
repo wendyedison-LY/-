@@ -22,9 +22,7 @@
             text-align: center;
         }
         h1 { color: #2c3e50; margin-bottom: 20px; font-size: 24px; }
-        .query-box {
-            margin: 25px 0;
-        }
+        .query-box { margin: 25px 0; }
         .query-box input {
             width: 65%;
             padding: 12px 15px;
@@ -56,16 +54,8 @@
             display: none;
             font-weight: bold;
         }
-        .result.error {
-            background: #fdecea;
-            color: #c0392b;
-        }
-        .result.warning {
-            background: #fef9e7;
-            color: #f39c12;
-        }
-
-        /* 管理面板 */
+        .result.error { background: #fdecea; color: #c0392b; }
+        .result.warning { background: #fef9e7; color: #f39c12; }
         .admin-panel {
             display: none;
             text-align: left;
@@ -74,14 +64,8 @@
             padding-top: 20px;
         }
         .admin-panel h3 { margin-bottom: 10px; color: #e67e22; }
-        .admin-group {
-            margin-bottom: 15px;
-        }
-        .admin-group label {
-            font-weight: bold;
-            display: block;
-            margin-bottom: 5px;
-        }
+        .admin-group { margin-bottom: 15px; }
+        .admin-group label { font-weight: bold; display: block; margin-bottom: 5px; }
         .admin-group textarea {
             width: 100%;
             height: 90px;
@@ -113,15 +97,12 @@
 <div class="container">
     <h1>苏州市保安员职业技能竞赛抽签</h1>
     <p style="color: #7f8c8d;">请输入您的姓名，点击按钮抽取号码</p>
-
     <div class="query-box">
         <input type="text" id="nameInput" placeholder="输入姓名" autocomplete="off">
         <button id="drawBtn" onclick="drawForUser()">抽签</button>
     </div>
-
     <div class="result" id="resultDisplay"></div>
 
-    <!-- 管理员面板（通过 ?admin=true 显示） -->
     <div class="admin-panel" id="adminPanel">
         <h3>🔧 管理员设置（仅此页面可见）</h3>
         <p class="info-text">请先粘贴名单，点击“保存名单”。名单保存后参与者才能抽签。</p>
@@ -130,11 +111,11 @@
             <textarea id="group1Names" placeholder="每行一个姓名，共15人"></textarea>
         </div>
         <div class="admin-group">
-            <label>人防组名单（8人，号码池 16-23）</label>
+            <label>技防组名单（8人，号码池 16-23）</label>
             <textarea id="group2Names" placeholder="每行一个姓名，共8人"></textarea>
         </div>
         <div class="admin-group">
-            <label>技防组名单（79人，从 23-102 中抽取79个号，剩余1个空号）</label>
+            <label>人防组名单（79人，号码池 23-101，每人一号，无空号）</label>
             <textarea id="group3Names" placeholder="每行一个姓名，共79人"></textarea>
         </div>
         <button class="admin-btn btn-save" onclick="saveNameList()">💾 保存名单</button>
@@ -144,12 +125,10 @@
 </div>
 
 <script>
-    // 存储键名
-    const STORAGE_NAMES = 'lottery_names';        // 保存的名单分组 { group1:[], group2:[], group3:[] }
-    const STORAGE_RESULT = 'lottery_result';      // 已抽签结果 { "姓名": {group, number} }
-    const STORAGE_POOLS = 'lottery_pools';        // 剩余号码池 { group1:[], group2:[], group3:[] }
+    const STORAGE_NAMES = 'lottery_names';
+    const STORAGE_RESULT = 'lottery_result';
+    const STORAGE_POOLS = 'lottery_pools';
 
-    // 获取存储数据
     function getData(key) {
         const raw = localStorage.getItem(key);
         return raw ? JSON.parse(raw) : null;
@@ -158,18 +137,16 @@
         localStorage.setItem(key, JSON.stringify(data));
     }
 
-    // 初始化号码池
     function createPools() {
         const pool1 = [];
         for (let i = 1; i <= 15; i++) pool1.push(i);
         const pool2 = [];
         for (let i = 16; i <= 23; i++) pool2.push(i);
         const pool3 = [];
-        for (let i = 23; i <= 102; i++) pool3.push(i);  // 80个号，只抽79人，会剩1个
+        for (let i = 23; i <= 101; i++) pool3.push(i);  // 改为23-101，共79个号码，全部用于79人
         return { group1: pool1, group2: pool2, group3: pool3 };
     }
 
-    // 洗牌函数
     function shuffle(arr) {
         for (let i = arr.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -178,35 +155,29 @@
         return arr;
     }
 
-    // 管理员保存名单
     function saveNameList() {
         const g1 = document.getElementById('group1Names').value.trim().split('\n').map(s => s.trim()).filter(s => s);
         const g2 = document.getElementById('group2Names').value.trim().split('\n').map(s => s.trim()).filter(s => s);
         const g3 = document.getElementById('group3Names').value.trim().split('\n').map(s => s.trim()).filter(s => s);
 
         if (g1.length !== 15) return alert('押运组必须正好15人');
-        if (g2.length !== 8) return alert('人防组必须正好8人');
-        if (g3.length !== 79) return alert('技防组必须正好79人');
+        if (g2.length !== 8) return alert('技防组必须正好8人');
+        if (g3.length !== 79) return alert('人防组必须正好79人');
 
-        // 保存名单
         setData(STORAGE_NAMES, { group1: g1, group2: g2, group3: g3 });
-        // 初始化号码池（洗牌）
         const pools = createPools();
         shuffle(pools.group1);
         shuffle(pools.group2);
         shuffle(pools.group3);
         setData(STORAGE_POOLS, pools);
-        // 清空之前的抽签结果
         setData(STORAGE_RESULT, {});
 
         alert('名单已保存，号码池已初始化。参与者现在可以抽签了。');
-        // 清空文本框
         document.getElementById('group1Names').value = '';
         document.getElementById('group2Names').value = '';
         document.getElementById('group3Names').value = '';
     }
 
-    // 用户抽签
     function drawForUser() {
         const name = document.getElementById('nameInput').value.trim();
         const resultDiv = document.getElementById('resultDisplay');
@@ -219,7 +190,6 @@
             return;
         }
 
-        // 检查是否有名单和号码池
         const names = getData(STORAGE_NAMES);
         const pools = getData(STORAGE_POOLS);
         const results = getData(STORAGE_RESULT) || {};
@@ -231,7 +201,6 @@
             return;
         }
 
-        // 检查姓名是否在名单中
         let group = null;
         if (names.group1.includes(name)) group = 'group1';
         else if (names.group2.includes(name)) group = 'group2';
@@ -243,7 +212,6 @@
             return;
         }
 
-        // 检查是否已经抽过
         if (results[name]) {
             const exist = results[name];
             resultDiv.className = 'result warning';
@@ -252,7 +220,6 @@
             return;
         }
 
-        // 未抽过，进行抽签
         const groupPool = pools[group];
         if (groupPool.length === 0) {
             resultDiv.className = 'result error';
@@ -261,31 +228,25 @@
             return;
         }
 
-        // 随机从号码池中取一个（池子已经洗过牌，可以直接pop最后一个）
         const drawnNum = groupPool.pop();
-        // 更新号码池存储
         setData(STORAGE_POOLS, pools);
 
-        // 记录结果，组名使用中文
         let groupDisplay = '';
         if (group === 'group1') groupDisplay = '押运组';
-        else if (group === 'group2') groupDisplay = '人防组';
-        else if (group === 'group3') groupDisplay = '技防组';
+        else if (group === 'group2') groupDisplay = '技防组';
+        else if (group === 'group3') groupDisplay = '人防组';
 
         results[name] = { group: groupDisplay, number: drawnNum };
         setData(STORAGE_RESULT, results);
 
-        // 显示结果
         resultDiv.className = 'result';
         resultDiv.innerText = `${name}，您的抽签号码是：${drawnNum}（${groupDisplay}）`;
         resultDiv.style.display = 'block';
 
-        // 禁用按钮短暂防止连点
         btn.disabled = true;
         setTimeout(() => { btn.disabled = false; }, 500);
     }
 
-    // 导出全部结果（管理员用）
     function exportAllResults() {
         const results = getData(STORAGE_RESULT);
         if (!results || Object.keys(results).length === 0) {
@@ -296,13 +257,12 @@
         for (const [name, info] of Object.entries(results)) {
             csv += `${name},${info.group},${info.number}\n`;
         }
-        // 同时显示空号信息
         const pools = getData(STORAGE_POOLS);
         if (pools) {
             csv += '\n剩余未抽号码\n';
             csv += `押运组剩余: ${pools.group1.join(',') || '无'}\n`;
-            csv += `人防组剩余: ${pools.group2.join(',') || '无'}\n`;
-            csv += `技防组剩余: ${pools.group3.join(',') || '无'}\n`;
+            csv += `技防组剩余: ${pools.group2.join(',') || '无'}\n`;
+            csv += `人防组剩余: ${pools.group3.join(',') || '无'}\n`;
         }
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
@@ -311,7 +271,6 @@
         link.click();
     }
 
-    // 清除所有数据
     function clearAllData() {
         if (confirm('确定要清除名单、号码池和所有抽签结果吗？')) {
             localStorage.removeItem(STORAGE_NAMES);
@@ -321,11 +280,9 @@
         }
     }
 
-    // 根据 URL 参数显示管理面板
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('admin') === 'true') {
         document.getElementById('adminPanel').style.display = 'block';
-        // 如果已有名单，预填到文本框
         const savedNames = getData(STORAGE_NAMES);
         if (savedNames) {
             document.getElementById('group1Names').value = savedNames.group1.join('\n');
@@ -334,7 +291,6 @@
         }
     }
 
-    // 支持回车键抽签
     document.getElementById('nameInput').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             drawForUser();
