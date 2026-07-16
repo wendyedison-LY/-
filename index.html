@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>抽签系统</title>
+    <title>苏州市保安员职业技能竞赛抽签</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -21,7 +21,7 @@
             box-shadow: 0 8px 20px rgba(0,0,0,0.1);
             text-align: center;
         }
-        h1 { color: #2c3e50; margin-bottom: 20px; }
+        h1 { color: #2c3e50; margin-bottom: 20px; font-size: 24px; }
         .query-box {
             margin: 25px 0;
         }
@@ -111,7 +111,7 @@
 </head>
 <body>
 <div class="container">
-    <h1>🎲 抽签</h1>
+    <h1>苏州市保安员职业技能竞赛抽签</h1>
     <p style="color: #7f8c8d;">请输入您的姓名，点击按钮抽取号码</p>
 
     <div class="query-box">
@@ -126,15 +126,15 @@
         <h3>🔧 管理员设置（仅此页面可见）</h3>
         <p class="info-text">请先粘贴名单，点击“保存名单”。名单保存后参与者才能抽签。</p>
         <div class="admin-group">
-            <label>第1组名单（15人，号码池 1-15）</label>
+            <label>押运组名单（15人，号码池 1-15）</label>
             <textarea id="group1Names" placeholder="每行一个姓名，共15人"></textarea>
         </div>
         <div class="admin-group">
-            <label>第2组名单（8人，号码池 16-23）</label>
+            <label>人防组名单（8人，号码池 16-23）</label>
             <textarea id="group2Names" placeholder="每行一个姓名，共8人"></textarea>
         </div>
         <div class="admin-group">
-            <label>第3组名单（79人，从 23-102 中抽取79个号，剩余1个空号）</label>
+            <label>技防组名单（79人，从 23-102 中抽取79个号，剩余1个空号）</label>
             <textarea id="group3Names" placeholder="每行一个姓名，共79人"></textarea>
         </div>
         <button class="admin-btn btn-save" onclick="saveNameList()">💾 保存名单</button>
@@ -184,9 +184,9 @@
         const g2 = document.getElementById('group2Names').value.trim().split('\n').map(s => s.trim()).filter(s => s);
         const g3 = document.getElementById('group3Names').value.trim().split('\n').map(s => s.trim()).filter(s => s);
 
-        if (g1.length !== 15) return alert('第1组必须正好15人');
-        if (g2.length !== 8) return alert('第2组必须正好8人');
-        if (g3.length !== 79) return alert('第3组必须正好79人');
+        if (g1.length !== 15) return alert('押运组必须正好15人');
+        if (g2.length !== 8) return alert('人防组必须正好8人');
+        if (g3.length !== 79) return alert('技防组必须正好79人');
 
         // 保存名单
         setData(STORAGE_NAMES, { group1: g1, group2: g2, group3: g3 });
@@ -247,7 +247,7 @@
         if (results[name]) {
             const exist = results[name];
             resultDiv.className = 'result warning';
-            resultDiv.innerText = `${name}，您已抽过签，号码是：${exist.number}（${exist.group === 'group1' ? '1组' : exist.group === 'group2' ? '2组' : '3组'}）`;
+            resultDiv.innerText = `${name}，您已抽过签，号码是：${exist.number}（${exist.group}）`;
             resultDiv.style.display = 'block';
             return;
         }
@@ -262,21 +262,25 @@
         }
 
         // 随机从号码池中取一个（池子已经洗过牌，可以直接pop最后一个）
-        const drawnNum = groupPool.pop();   // 从末尾取出，保证随机性
+        const drawnNum = groupPool.pop();
         // 更新号码池存储
         setData(STORAGE_POOLS, pools);
 
-        // 记录结果
-        const groupName = group === 'group1' ? '1组' : group === 'group2' ? '2组' : '3组';
-        results[name] = { group: groupName, number: drawnNum };
+        // 记录结果，组名使用中文
+        let groupDisplay = '';
+        if (group === 'group1') groupDisplay = '押运组';
+        else if (group === 'group2') groupDisplay = '人防组';
+        else if (group === 'group3') groupDisplay = '技防组';
+
+        results[name] = { group: groupDisplay, number: drawnNum };
         setData(STORAGE_RESULT, results);
 
         // 显示结果
         resultDiv.className = 'result';
-        resultDiv.innerText = `${name}，您的抽签号码是：${drawnNum}（${groupName}）`;
+        resultDiv.innerText = `${name}，您的抽签号码是：${drawnNum}（${groupDisplay}）`;
         resultDiv.style.display = 'block';
 
-        // 禁用按钮短暂防止连点（可选）
+        // 禁用按钮短暂防止连点
         btn.disabled = true;
         setTimeout(() => { btn.disabled = false; }, 500);
     }
@@ -292,13 +296,13 @@
         for (const [name, info] of Object.entries(results)) {
             csv += `${name},${info.group},${info.number}\n`;
         }
-        // 同时显示空号信息（如果有）
+        // 同时显示空号信息
         const pools = getData(STORAGE_POOLS);
         if (pools) {
             csv += '\n剩余未抽号码\n';
-            csv += `1组剩余: ${pools.group1.join(',') || '无'}\n`;
-            csv += `2组剩余: ${pools.group2.join(',') || '无'}\n`;
-            csv += `3组剩余: ${pools.group3.join(',') || '无'}\n`;
+            csv += `押运组剩余: ${pools.group1.join(',') || '无'}\n`;
+            csv += `人防组剩余: ${pools.group2.join(',') || '无'}\n`;
+            csv += `技防组剩余: ${pools.group3.join(',') || '无'}\n`;
         }
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
@@ -321,7 +325,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('admin') === 'true') {
         document.getElementById('adminPanel').style.display = 'block';
-        // 如果已有名单，预填到文本框（方便查看）
+        // 如果已有名单，预填到文本框
         const savedNames = getData(STORAGE_NAMES);
         if (savedNames) {
             document.getElementById('group1Names').value = savedNames.group1.join('\n');
