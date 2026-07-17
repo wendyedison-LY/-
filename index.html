@@ -82,6 +82,15 @@
         group3: '人防组'
     };
 
+    // Base64 编解码（支持中文）
+    function encodeName(str) {
+        // 将 UTF-8 字节转为 Base64
+        return btoa(unescape(encodeURIComponent(str)));
+    }
+    function decodeName(encoded) {
+        return decodeURIComponent(escape(atob(encoded)));
+    }
+
     let supabase;
     try {
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -112,11 +121,11 @@
             return { group1: shuffle(pool1), group2: shuffle(pool2), group3: shuffle(pool3) };
         }
 
-        // 管理员保存名单
+        // 管理员保存名单（将姓名编码后存储）
         document.getElementById('saveBtn').addEventListener('click', async () => {
-            const g1 = document.getElementById('group1Names').value.trim().split('\n').map(s=>s.trim()).filter(s=>s);
-            const g2 = document.getElementById('group2Names').value.trim().split('\n').map(s=>s.trim()).filter(s=>s);
-            const g3 = document.getElementById('group3Names').value.trim().split('\n').map(s=>s.trim()).filter(s=>s);
+            const g1 = document.getElementById('group1Names').value.trim().split('\n').map(s => encodeName(s.trim())).filter(s => s);
+            const g2 = document.getElementById('group2Names').value.trim().split('\n').map(s => encodeName(s.trim())).filter(s => s);
+            const g3 = document.getElementById('group3Names').value.trim().split('\n').map(s => encodeName(s.trim())).filter(s => s);
             if (g1.length !== 15) return alert('押运组需15人，当前'+g1.length+'人');
             if (g2.length !== 8) return alert('技防组需8人，当前'+g2.length+'人');
             if (g3.length !== 79) return alert('人防组需79人，当前'+g3.length+'人');
@@ -132,7 +141,7 @@
             document.getElementById('group3Names').value = '';
         });
 
-        // 导出 CSV
+        // 导出 CSV（解码姓名）
         document.getElementById('exportBtn').addEventListener('click', async () => {
             const { data: results, error } = await supabase.from('results').select('name, group, number').order('id', { ascending: true });
             if (error) return alert('导出失败：' + error.message);
@@ -140,9 +149,9 @@
 
             let csv = '\uFEFF姓名,组别,号码\n';
             results.forEach(r => {
-                // 将英文组名转换为中文显示
+                const displayName = decodeName(r.name);
                 const groupDisplay = GROUP_NAME_MAP[r.group] || r.group;
-                csv += `${r.name},${groupDisplay},${r.number}\n`;
+                csv += `${displayName},${groupDisplay},${r.number}\n`;
             });
 
             const { data: cfg } = await supabase.from('config').select('data').eq('id', 1).single();
@@ -169,31 +178,32 @@
             alert('已清除');
         });
 
-        // 用户抽签
+        // 用户抽签（输入姓名后编码查询）
         document.getElementById('drawBtn').addEventListener('click', async () => {
-            const name = document.getElementById('nameInput').value.trim();
-            if (!name) return showResult('请输入姓名', 'error');
+            const nameInput = document.getElementById('nameInput').value.trim();
+            if (!nameInput) return showResult('请输入姓名', 'error');
+            const encodedName = encodeName(nameInput);
             const btn = document.getElementById('drawBtn');
             btn.classList.add('disabled');
 
             try {
-                // 检查是否已抽过
-                const { data: exist } = await supabase.from('results').select('*').eq('name', name).maybeSingle();
+                // 检查是否已抽过（查询编码后的姓名）
+                const { data: exist } = await supabase.from('results').select('*').eq('name', encodedName).maybeSingle();
                 if (exist) {
                     const groupDisplay = GROUP_NAME_MAP[exist.group] || exist.group;
-                    showResult(`${name} 已抽过：${exist.number}号（${groupDisplay}）`, 'warning');
+                    showResult(`${nameInput} 已抽过：${exist.number}号（${groupDisplay}）`, 'warning');
                     return;
                 }
 
-                // 获取配置
+                // 获取配置（名单里存储的是编码后的姓名）
                 const { data: cfg } = await supabase.from('config').select('data').eq('id', 1).single();
                 if (!cfg?.data?.names?.group1) throw new Error('抽签尚未开始');
 
                 const { names, pools } = cfg.data;
                 let groupKey = null;
-                if (names.group1.includes(name)) groupKey = 'group1';
-                else if (names.group2.includes(name)) groupKey = 'group2';
-                else if (names.group3.includes(name)) groupKey = 'group3';
+                if (names.group1.includes(encodedName)) groupKey = 'group1';
+                else if (names.group2.includes(encodedName)) groupKey = 'group2';
+                else if (names.group3.includes(encodedName)) groupKey = 'group3';
                 else {
                     showResult('您不在名单中', 'error');
                     return;
@@ -210,17 +220,17 @@
                 const number = newPool.pop();
                 pools[groupKey] = newPool;
 
-                // 使用英文组名调用 RPC，避免中文在 Header 中出错
+                // 调用 RPC，传入编码后的姓名和纯英文组名
                 const { error: rpcErr } = await supabase.rpc('draw_lottery', {
-                    p_name: name,
-                    p_group: groupKey,          // 传入 'group1', 'group2', 'group3'
+                    p_name: encodedName,        // 已经 Base64 编码
+                    p_group: groupKey,
                     p_number: number,
                     p_new_pools: pools
                 });
                 if (rpcErr) throw new Error(rpcErr.message);
 
                 const groupDisplay = GROUP_NAME_MAP[groupKey];
-                showResult(`${name} 抽到 ${number}号（${groupDisplay}）`, 'success');
+                showResult(`${nameInput} 抽到 ${number}号（${groupDisplay}）`, 'success');
                 document.getElementById('nameInput').value = '';
             } catch (err) {
                 console.error(err);
