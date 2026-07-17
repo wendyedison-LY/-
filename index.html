@@ -4,114 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>苏州市保安员职业技能竞赛抽签</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: "Microsoft YaHei", sans-serif;
-            background: #f0f2f5;
-            display: flex;
-            justify-content: center;
-            padding: 30px 15px;
-        }
-        .container {
-            width: 100%;
-            max-width: 500px;
-            background: white;
-            padding: 25px 20px;
-            border-radius: 16px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-            text-align: center;
-        }
+        body { font-family: "Microsoft YaHei", sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 30px 15px; }
+        .container { width: 100%; max-width: 500px; background: white; padding: 25px 20px; border-radius: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); text-align: center; }
         h1 { color: #2c3e50; margin-bottom: 15px; font-size: 22px; }
         .query-box { margin: 20px 0; }
-        .query-box input {
-            width: 65%;
-            padding: 12px 15px;
-            font-size: 16px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            outline: none;
-            -webkit-appearance: none;
-        }
-        .draw-btn {
-            display: inline-block;
-            padding: 12px 25px;
-            font-size: 16px;
-            background: #3498db;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-left: 5px;
-            font-weight: bold;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
+        .query-box input { width: 65%; padding: 12px; font-size: 16px; border: 2px solid #ddd; border-radius: 8px; outline: none; }
+        .draw-btn { display: inline-block; padding: 12px 25px; font-size: 16px; background: #3498db; color: white; border-radius: 8px; cursor: pointer; margin-left: 5px; font-weight: bold; user-select: none; }
         .draw-btn:active { background: #2980b9; }
         .draw-btn.disabled { background: #bdc3c7; pointer-events: none; }
-        .result {
-            margin-top: 20px;
-            font-size: 20px;
-            padding: 18px;
-            border-radius: 10px;
-            display: none;
-            font-weight: bold;
-        }
+        .result { margin-top: 20px; font-size: 20px; padding: 18px; border-radius: 10px; display: none; font-weight: bold; }
         .result.success { background: #eaf7ee; color: #27ae60; }
         .result.error { background: #fdecea; color: #c0392b; }
         .result.warning { background: #fef9e7; color: #f39c12; }
-
-        .admin-panel {
-            display: none;
-            text-align: left;
-            margin-top: 25px;
-            border-top: 2px solid #eee;
-            padding-top: 20px;
-        }
-        .admin-panel h3 { margin-bottom: 8px; color: #e67e22; font-size: 18px; }
+        .admin-panel { display: none; text-align: left; margin-top: 25px; border-top: 2px solid #eee; padding-top: 20px; }
+        .admin-panel h3 { color: #e67e22; margin-bottom: 8px; }
         .admin-group { margin-bottom: 15px; }
         .admin-group label { font-weight: bold; display: block; margin-bottom: 5px; font-size: 14px; }
-        .admin-group textarea {
-            width: 100%;
-            height: 90px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            resize: vertical;
-            font-size: 14px;
-        }
-        .admin-btn {
-            padding: 10px 18px;
-            font-size: 14px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-right: 8px;
-            color: white;
-            user-select: none;
-        }
+        .admin-group textarea { width: 100%; height: 90px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        .admin-btn { padding: 10px 18px; font-size: 14px; border: none; border-radius: 6px; cursor: pointer; margin-right: 8px; color: white; }
         .btn-save { background: #3498db; }
         .btn-save:active { background: #2980b9; }
         .btn-export { background: #27ae60; }
         .btn-export:active { background: #219a52; }
         .btn-clear { background: #e74c3c; }
         .btn-clear:active { background: #c0392b; }
-        .wechat-tip {
-            display: none;
-            background: #fef9e7;
-            color: #856404;
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            font-size: 14px;
-        }
+        .wechat-tip { display: none; background: #fef9e7; color: #856404; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 14px; }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>苏州市保安员职业技能竞赛抽签</h1>
-    <div id="wechatTip" class="wechat-tip">检测到您正在微信中打开，请点击右上角“...”选择“在浏览器打开”以获得完整体验。</div>
-    <p style="color: #7f8c8d; font-size:14px;">请输入姓名，点击按钮抽取号码</p>
+    <div id="wechatTip" class="wechat-tip">检测到微信环境，请点击右上角“...”选择“在浏览器打开”。</div>
+    <p style="color:#7f8c8d; font-size:14px;">输入姓名，点击按钮抽取号码</p>
     <div class="query-box">
         <input type="text" id="nameInput" placeholder="输入姓名" autocomplete="off">
         <div class="draw-btn" id="drawBtn">抽签</div>
@@ -120,7 +47,7 @@
 
     <div class="admin-panel" id="adminPanel">
         <h3>🔧 管理员设置</h3>
-        <p style="font-size:13px;color:#7f8c8d;">粘贴名单后点击“保存名单”，之后参与者方可抽签。</p>
+        <p style="font-size:13px;color:#7f8c8d;">粘贴名单后点击“保存名单”，立即生效。</p>
         <div class="admin-group">
             <label>押运组（15人，1-15号）</label>
             <textarea id="group1Names" placeholder="每行一个姓名，共15人"></textarea>
@@ -140,171 +67,169 @@
 </div>
 
 <script>
-    (function() {
-        // 检测微信并显示提示
-        if (/micromessenger/i.test(navigator.userAgent)) {
-            document.getElementById('wechatTip').style.display = 'block';
-        }
+    // ==================== 替换你的 Supabase 信息 ====================
+    const SUPABASE_URL = 'https://你的项目ID.supabase.co';
+    const SUPABASE_ANON_KEY = '你的anon public key';
+    // ==============================================================
 
-        const STORAGE_NAMES = 'lottery_names_v2';
-        const STORAGE_RESULT = 'lottery_result_v2';
-        const STORAGE_POOLS = 'lottery_pools_v2';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        function getData(key) {
-            try {
-                const raw = localStorage.getItem(key);
-                return raw ? JSON.parse(raw) : null;
-            } catch (e) {
-                showToast('本地存储不可用，请检查浏览器设置。', 'error');
-                return null;
-            }
-        }
-        function setData(key, data) {
-            try {
-                localStorage.setItem(key, JSON.stringify(data));
-                return true;
-            } catch (e) {
-                showToast('存储失败，可能空间不足。', 'error');
-                return false;
-            }
-        }
+    if (/micromessenger/i.test(navigator.userAgent)) {
+        document.getElementById('wechatTip').style.display = 'block';
+    }
 
-        function createPools() {
-            const pool1 = [], pool2 = [], pool3 = [];
-            for (let i = 1; i <= 15; i++) pool1.push(i);
-            for (let i = 16; i <= 23; i++) pool2.push(i);
-            for (let i = 24; i <= 102; i++) pool3.push(i);
-            return { group1: pool1, group2: pool2, group3: pool3 };
-        }
+    function showResult(msg, type) {
+        const div = document.getElementById('resultDisplay');
+        div.innerText = msg;
+        div.className = 'result ' + (type || 'success');
+        div.style.display = 'block';
+    }
 
-        function shuffle(arr) {
-            for (let i = arr.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [arr[i], arr[j]] = [arr[j], arr[i]];
-            }
-            return arr;
-        }
+    function createPools() {
+        const pool1 = Array.from({length:15}, (_,i)=>i+1);
+        const pool2 = Array.from({length:8}, (_,i)=>i+16);
+        const pool3 = Array.from({length:79}, (_,i)=>i+24);
+        const shuffle = arr => { for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];} return arr; };
+        return { group1: shuffle(pool1), group2: shuffle(pool2), group3: shuffle(pool3) };
+    }
 
-        function showToast(msg, type) {
-            const div = document.getElementById('resultDisplay');
-            div.innerText = msg;
-            div.className = 'result ' + (type || 'success');
-            div.style.display = 'block';
-            setTimeout(() => { div.style.display = 'none'; }, 3000);
-        }
+    // 管理员保存
+    document.getElementById('saveBtn').addEventListener('click', async () => {
+        const g1 = document.getElementById('group1Names').value.trim().split('\n').map(s=>s.trim()).filter(s=>s);
+        const g2 = document.getElementById('group2Names').value.trim().split('\n').map(s=>s.trim()).filter(s=>s);
+        const g3 = document.getElementById('group3Names').value.trim().split('\n').map(s=>s.trim()).filter(s=>s);
+        if (g1.length !== 15) return alert('押运组需15人，当前'+g1.length+'人');
+        if (g2.length !== 8) return alert('技防组需8人，当前'+g2.length+'人');
+        if (g3.length !== 79) return alert('人防组需79人，当前'+g3.length+'人');
 
-        // 管理员保存
-        document.getElementById('saveBtn').addEventListener('click', function() {
-            const g1 = document.getElementById('group1Names').value.trim().split('\n').map(s => s.trim()).filter(s => s);
-            const g2 = document.getElementById('group2Names').value.trim().split('\n').map(s => s.trim()).filter(s => s);
-            const g3 = document.getElementById('group3Names').value.trim().split('\n').map(s => s.trim()).filter(s => s);
-            if (g1.length !== 15) return alert('押运组需15人，当前' + g1.length + '人');
-            if (g2.length !== 8) return alert('技防组需8人，当前' + g2.length + '人');
-            if (g3.length !== 79) return alert('人防组需79人，当前' + g3.length + '人');
+        const pools = createPools();
+        const data = { names: { group1: g1, group2: g2, group3: g3 }, pools };
 
-            setData(STORAGE_NAMES, { group1: g1, group2: g2, group3: g3 });
-            const pools = createPools();
-            shuffle(pools.group1); shuffle(pools.group2); shuffle(pools.group3);
-            setData(STORAGE_POOLS, pools);
-            setData(STORAGE_RESULT, {});
-            alert('名单已保存，现在可以让参与者抽签了。');
-            document.getElementById('group1Names').value = '';
-            document.getElementById('group2Names').value = '';
-            document.getElementById('group3Names').value = '';
-        });
+        const { error: updateError } = await supabase
+            .from('config')
+            .update({ data })
+            .eq('id', 1);
+        if (updateError) return alert('保存失败：' + updateError.message);
 
-        // 用户抽签
-        document.getElementById('drawBtn').addEventListener('click', function() {
-            const name = document.getElementById('nameInput').value.trim();
-            if (!name) {
-                showToast('请输入姓名', 'error');
-                return;
+        // 清空抽签结果
+        await supabase.from('results').delete().neq('id', 0);
+
+        alert('名单已保存，号码池已初始化！');
+        document.getElementById('group1Names').value = '';
+        document.getElementById('group2Names').value = '';
+        document.getElementById('group3Names').value = '';
+    });
+
+    // 用户抽签
+    document.getElementById('drawBtn').addEventListener('click', async () => {
+        const name = document.getElementById('nameInput').value.trim();
+        if (!name) return showResult('请输入姓名', 'error');
+        const btn = document.getElementById('drawBtn');
+        btn.classList.add('disabled');
+
+        try {
+            // 检查是否已抽过
+            const { data: existing, error: queryError } = await supabase
+                .from('results')
+                .select('*')
+                .eq('name', name)
+                .maybeSingle();
+            if (queryError) throw new Error(queryError.message);
+            if (existing) {
+                return showResult(`${name} 已抽过：${existing.number}号（${existing.group}）`, 'warning');
             }
-            const names = getData(STORAGE_NAMES);
-            const pools = getData(STORAGE_POOLS);
-            const results = getData(STORAGE_RESULT) || {};
-            if (!names || !pools) {
-                showToast('抽签未开始，请等待管理员设置。', 'error');
-                return;
-            }
-            let group = null;
-            if (names.group1.includes(name)) group = 'group1';
-            else if (names.group2.includes(name)) group = 'group2';
-            else if (names.group3.includes(name)) group = 'group3';
-            else {
-                showToast('您不在名单中，无法抽签', 'error');
-                return;
-            }
-            if (results[name]) {
-                const exist = results[name];
-                showToast(`${name} 已抽过：${exist.number}号（${exist.group}）`, 'warning');
-                return;
-            }
-            const groupPool = pools[group];
-            if (groupPool.length === 0) {
-                showToast('该组号码已抽完', 'error');
-                return;
-            }
-            const drawnNum = groupPool.pop();
-            setData(STORAGE_POOLS, pools);
-            let groupDisplay = {'group1':'押运组','group2':'技防组','group3':'人防组'}[group];
-            results[name] = { group: groupDisplay, number: drawnNum };
-            setData(STORAGE_RESULT, results);
-            showToast(`${name} 抽到 ${drawnNum}号（${groupDisplay}）`, 'success');
+
+            // 获取配置
+            const { data: configData, error: configError } = await supabase
+                .from('config')
+                .select('data')
+                .eq('id', 1)
+                .single();
+            if (configError || !configData?.data) throw new Error('抽签尚未开始，请等待管理员设置。');
+
+            const config = configData.data;
+            const { names, pools } = config;
+
+            let groupKey = null;
+            if (names.group1.includes(name)) groupKey = 'group1';
+            else if (names.group2.includes(name)) groupKey = 'group2';
+            else if (names.group3.includes(name)) groupKey = 'group3';
+            else return showResult('您不在名单中，无法抽签', 'error');
+
+            const pool = pools[groupKey];
+            if (!pool || pool.length === 0) return showResult('该组号码已抽完', 'error');
+
+            const newPool = [...pool];
+            const drawnNum = newPool.pop();
+            pools[groupKey] = newPool;
+
+            const groupDisplay = { group1: '押运组', group2: '技防组', group3: '人防组' }[groupKey];
+
+            // 使用数据库事务函数
+            const { error: drawError } = await supabase.rpc('draw_lottery', {
+                p_name: name,
+                p_group: groupDisplay,
+                p_number: drawnNum,
+                p_new_pools: pools
+            });
+            if (drawError) throw new Error(drawError.message);
+
+            showResult(`${name} 抽到 ${drawnNum}号（${groupDisplay}）`, 'success');
             document.getElementById('nameInput').value = '';
-        });
+        } catch (err) {
+            console.error(err);
+            showResult(err.message || '抽签失败，请重试', 'error');
+        } finally {
+            btn.classList.remove('disabled');
+        }
+    });
 
-        // 导出
-        document.getElementById('exportBtn').addEventListener('click', function() {
-            const results = getData(STORAGE_RESULT);
-            if (!results || Object.keys(results).length === 0) {
-                alert('暂无抽签结果');
-                return;
-            }
+    // 导出
+    document.getElementById('exportBtn').addEventListener('click', async () => {
+        try {
+            const { data: results, error } = await supabase
+                .from('results')
+                .select('name, group, number')
+                .order('id', { ascending: true });
+            if (error) throw error;
+            if (results.length === 0) return alert('暂无抽签结果');
+
             let csv = '\uFEFF姓名,组别,号码\n';
-            for (const [name, info] of Object.entries(results)) {
-                csv += `${name},${info.group},${info.number}\n`;
+            results.forEach(r => { csv += `${r.name},${r.group},${r.number}\n`; });
+
+            const { data: configData } = await supabase.from('config').select('data').eq('id', 1).single();
+            if (configData?.data?.pools) {
+                const pools = configData.data.pools;
+                csv += '\n剩余未抽号码\n';
+                csv += `押运组: ${pools.group1?.join(',') || '无'}\n`;
+                csv += `技防组: ${pools.group2?.join(',') || '无'}\n`;
+                csv += `人防组: ${pools.group3?.join(',') || '无'}\n`;
             }
-            const pools = getData(STORAGE_POOLS);
-            if (pools) {
-                csv += '\n剩余号码\n';
-                csv += `押运组: ${pools.group1.join(',') || '无'}\n`;
-                csv += `技防组: ${pools.group2.join(',') || '无'}\n`;
-                csv += `人防组: ${pools.group3.join(',') || '无'}\n`;
-            }
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
             a.download = '抽签结果.csv';
             a.click();
-        });
-
-        // 清除
-        document.getElementById('clearBtn').addEventListener('click', function() {
-            if (confirm('清除所有名单和抽签结果？')) {
-                localStorage.removeItem(STORAGE_NAMES);
-                localStorage.removeItem(STORAGE_POOLS);
-                localStorage.removeItem(STORAGE_RESULT);
-                alert('已清除');
-            }
-        });
-
-        // 管理员模式
-        if (window.location.search.includes('admin=true')) {
-            document.getElementById('adminPanel').style.display = 'block';
-            const savedNames = getData(STORAGE_NAMES);
-            if (savedNames) {
-                document.getElementById('group1Names').value = savedNames.group1.join('\n');
-                document.getElementById('group2Names').value = savedNames.group2.join('\n');
-                document.getElementById('group3Names').value = savedNames.group3.join('\n');
-            }
+        } catch (err) {
+            alert('导出失败：' + err.message);
         }
+    });
 
-        // 回车键抽签
-        document.getElementById('nameInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') document.getElementById('drawBtn').click();
-        });
-    })();
+    // 清除
+    document.getElementById('clearBtn').addEventListener('click', async () => {
+        if (!confirm('确定要清除云端所有名单和结果吗？')) return;
+        await supabase.from('results').delete().neq('id', 0);
+        await supabase.from('config').update({ data: { names: {}, pools: {} } }).eq('id', 1);
+        alert('所有数据已清除。');
+    });
+
+    if (window.location.search.includes('admin=true')) {
+        document.getElementById('adminPanel').style.display = 'block';
+    }
+
+    document.getElementById('nameInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') document.getElementById('drawBtn').click();
+    });
 </script>
 </body>
 </html>
