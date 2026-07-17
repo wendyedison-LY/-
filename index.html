@@ -70,10 +70,10 @@
 </div>
 
 <script>
-    // ==================== 你的 Supabase 项目信息（已替换） ====================
+    // ==================== 你的 Supabase 项目信息 ====================
     const SUPABASE_URL = 'https://jfukcivyyxhxnxwiqzxf.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_8yqTh7nGPga2F9gnNwMzcg_WuUyo2AD';
-    // ========================================================================
+    // ==================================================================
 
     const REST_URL = SUPABASE_URL + '/rest/v1';
     const HEADERS = {
@@ -180,7 +180,7 @@
         alert('已清除所有数据。');
     });
 
-    // ================= 用户抽签 =================
+    // ================= 用户抽签（防重复，调用新函数） =================
     document.getElementById('drawBtn').addEventListener('click', async () => {
         const nameInput = document.getElementById('nameInput').value.trim();
         if (!nameInput) return showResult('请输入姓名', 'error');
@@ -196,13 +196,13 @@
                 return showResult(`${nameInput} 已抽过：${rec.number}号（${GROUP_MAP[rec.group] || rec.group}）`, 'warning');
             }
 
-            // 获取配置
+            // 获取配置，确定组别
             const { data: cfg } = await api('GET', '/config?id=eq.1&select=data');
             if (!cfg || cfg.length === 0 || !cfg[0].data.names.group1) {
                 throw new Error('抽签尚未开始，请等待管理员设置。');
             }
             const config = cfg[0].data;
-            const { names, pools } = config;
+            const { names } = config;
 
             let groupKey = null;
             if (names.group1.includes(encoded)) groupKey = 'group1';
@@ -210,22 +210,13 @@
             else if (names.group3.includes(encoded)) groupKey = 'group3';
             else return showResult('您不在名单中', 'error');
 
-            const pool = pools[groupKey];
-            if (!pool.length) return showResult('该组号码已抽完', 'error');
-
-            // 抽取号码
-            const newPool = [...pool];
-            const number = newPool.pop();
-            pools[groupKey] = newPool;
-
-            // 调用数据库函数（原子操作）
-            const { error: rpcErr } = await api('POST', '/rpc/draw_lottery', {
+            // 调用新的数据库函数，只需传姓名和组别，号码由数据库原子弹出
+            const { data: drawnNumber, error: rpcErr } = await api('POST', '/rpc/draw_lottery', {
                 p_name: encoded,
-                p_group: groupKey,
-                p_number: number,
-                p_new_pools: pools
+                p_group: groupKey
             });
             if (rpcErr) throw new Error(rpcErr.message);
+            const number = drawnNumber; // 数据库直接返回号码
 
             showResult(`${nameInput} 抽到 ${number}号（${GROUP_MAP[groupKey]}）`, 'success');
             document.getElementById('nameInput').value = '';
@@ -247,7 +238,7 @@
         if (e.key === 'Enter') document.getElementById('drawBtn').click();
     });
 
-    // 微信提醒
+    // 微信提示
     if (/micromessenger/i.test(navigator.userAgent)) {
         document.getElementById('wechatTip').style.display = 'block';
     }
