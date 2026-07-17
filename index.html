@@ -70,188 +70,186 @@
 </div>
 
 <script>
-    // ==================== ⚠️ 请务必替换成你自己的真实信息 ====================
-   const SUPABASE_URL = 'https://jfukcivyyxhxnxwiqzxf.supabase.co';
-   const SUPABASE_ANON_KEY = 'sb_publishable_8yqTh7nGPga2F9gnNwMzcg_WuUyo2AD';
+    // ==================== 你的 Supabase 项目信息（已替换） ====================
+    const SUPABASE_URL = 'https://jfukcivyyxhxnxwiqzxf.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_8yqTh7nGPga2F9gnNwMzcg_WuUyo2AD';
     // ========================================================================
 
-    // 立即检查：如果密钥中可能包含中文字符，直接报错
-    const alertDiv = document.getElementById('configAlert');
-    if (/[\u4e00-\u9fff]/.test(SUPABASE_URL) || /[\u4e00-\u9fff]/.test(SUPABASE_ANON_KEY)) {
-        alertDiv.innerText = '错误：SUPABASE_URL 或 SUPABASE_ANON_KEY 中还包含中文字符，请替换成你在 Supabase 控制台看到的真实密钥！';
-        alertDiv.style.display = 'block';
-        document.getElementById('drawBtn').classList.add('disabled');
-    } else if (SUPABASE_URL === 'https://你的项目ID.supabase.co' || SUPABASE_ANON_KEY === '你的anon public key') {
-        alertDiv.innerText = '请先打开 index.html，替换里面的 SUPABASE_URL 和 SUPABASE_ANON_KEY 为你自己的 Supabase 项目信息。';
-        alertDiv.style.display = 'block';
-        document.getElementById('drawBtn').classList.add('disabled');
-    } else {
-        // 密钥看起来正常，继续初始化
-        const REST_URL = SUPABASE_URL + '/rest/v1';
-        const HEADERS = {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json'
+    const REST_URL = SUPABASE_URL + '/rest/v1';
+    const HEADERS = {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json'
+    };
+
+    const GROUP_MAP = { group1: '押运组', group2: '技防组', group3: '人防组' };
+    const encode = (str) => btoa(unescape(encodeURIComponent(str)));
+    const decode = (str) => decodeURIComponent(escape(atob(str)));
+
+    // 通用 fetch 封装
+    async function api(method, path, body) {
+        try {
+            const options = { method, headers: HEADERS };
+            if (body) options.body = JSON.stringify(body);
+            const res = await fetch(REST_URL + path, options);
+            if (res.status === 204) return { data: null, error: null };
+            const text = await res.text();
+            if (!res.ok) {
+                let msg = text;
+                try { msg = JSON.parse(text).message || text; } catch (e) {}
+                return { data: null, error: new Error(msg) };
+            }
+            return { data: text ? JSON.parse(text) : null, error: null };
+        } catch (err) {
+            return { data: null, error: err };
+        }
+    }
+
+    // 显示结果
+    function showResult(msg, type) {
+        const div = document.getElementById('resultDisplay');
+        div.innerText = msg;
+        div.className = 'result ' + (type || 'success');
+        div.style.display = 'block';
+    }
+
+    // 生成并洗牌号码池
+    function createPools() {
+        const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+        return {
+            group1: shuffle(Array.from({ length: 15 }, (_, i) => i + 1)),
+            group2: shuffle(Array.from({ length: 8 }, (_, i) => i + 16)),
+            group3: shuffle(Array.from({ length: 79 }, (_, i) => i + 24))
         };
+    }
 
-        const GROUP_MAP = { group1: '押运组', group2: '技防组', group3: '人防组' };
-        const encode = str => btoa(unescape(encodeURIComponent(str)));
-        const decode = str => decodeURIComponent(escape(atob(str)));
+    // ================= 管理员功能 =================
+    document.getElementById('saveBtn').addEventListener('click', async () => {
+        const raw1 = document.getElementById('group1Names').value.trim().split('\n').map(s => encode(s.trim())).filter(s => s);
+        const raw2 = document.getElementById('group2Names').value.trim().split('\n').map(s => encode(s.trim())).filter(s => s);
+        const raw3 = document.getElementById('group3Names').value.trim().split('\n').map(s => encode(s.trim())).filter(s => s);
+        if (raw1.length !== 15) return alert('押运组需15人，当前 ' + raw1.length + ' 人');
+        if (raw2.length !== 8) return alert('技防组需8人，当前 ' + raw2.length + ' 人');
+        if (raw3.length !== 79) return alert('人防组需79人，当前 ' + raw3.length + ' 人');
 
-        async function api(method, path, body) {
-            try {
-                const options = { method, headers: HEADERS };
-                if (body) options.body = JSON.stringify(body);
-                const res = await fetch(REST_URL + path, options);
-                if (res.status === 204) return { data: null, error: null };
-                const text = await res.text();
-                if (!res.ok) {
-                    let msg = text;
-                    try { msg = JSON.parse(text).message || text; } catch(e) {}
-                    return { data: null, error: new Error(msg) };
-                }
-                return { data: text ? JSON.parse(text) : null, error: null };
-            } catch (err) {
-                return { data: null, error: err };
-            }
-        }
+        const pools = createPools();
+        const data = { names: { group1: raw1, group2: raw2, group3: raw3 }, pools };
 
-        function showResult(msg, type) {
-            const div = document.getElementById('resultDisplay');
-            div.innerText = msg;
-            div.className = 'result ' + (type || 'success');
-            div.style.display = 'block';
-        }
+        const { error: updateErr } = await api('PATCH', '/config?id=eq.1', { data });
+        if (updateErr) return alert('保存失败：' + updateErr.message);
 
-        function createPools() {
-            const shuffle = arr => { for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];} return arr; };
-            return {
-                group1: shuffle(Array.from({length:15}, (_,i)=>i+1)),
-                group2: shuffle(Array.from({length:8}, (_,i)=>i+16)),
-                group3: shuffle(Array.from({length:79}, (_,i)=>i+24))
-            };
-        }
+        await api('DELETE', '/results?id=gt.0');
+        alert('✅ 名单已保存，参与者现在可以抽签了！');
+        document.getElementById('group1Names').value = '';
+        document.getElementById('group2Names').value = '';
+        document.getElementById('group3Names').value = '';
+    });
 
-        // 管理员保存
-        document.getElementById('saveBtn').addEventListener('click', async () => {
-            const raw1 = document.getElementById('group1Names').value.trim().split('\n').map(s=>encode(s.trim())).filter(s=>s);
-            const raw2 = document.getElementById('group2Names').value.trim().split('\n').map(s=>encode(s.trim())).filter(s=>s);
-            const raw3 = document.getElementById('group3Names').value.trim().split('\n').map(s=>encode(s.trim())).filter(s=>s);
-            if (raw1.length !== 15) return alert('押运组需15人，当前'+raw1.length+'人');
-            if (raw2.length !== 8) return alert('技防组需8人，当前'+raw2.length+'人');
-            if (raw3.length !== 79) return alert('人防组需79人，当前'+raw3.length+'人');
+    // 导出 CSV
+    document.getElementById('exportBtn').addEventListener('click', async () => {
+        const { data: results, error } = await api('GET', '/results?select=*&order=id.asc');
+        if (error) return alert('导出失败：' + error.message);
+        if (!results || results.length === 0) return alert('暂无抽签结果');
 
-            const pools = createPools();
-            const data = { names: { group1: raw1, group2: raw2, group3: raw3 }, pools };
-
-            const { error: updateErr } = await api('PATCH', '/config?id=eq.1', { data });
-            if (updateErr) return alert('保存失败：' + updateErr.message);
-
-            await api('DELETE', '/results?id=gt.0');
-            alert('✅ 名单已保存，参与者现在可以抽签了！');
-            document.getElementById('group1Names').value = '';
-            document.getElementById('group2Names').value = '';
-            document.getElementById('group3Names').value = '';
+        let csv = '\uFEFF姓名,组别,号码\n';
+        results.forEach(r => {
+            csv += `${decode(r.name)},${GROUP_MAP[r.group] || r.group},${r.number}\n`;
         });
 
-        // 用户抽签
-        document.getElementById('drawBtn').addEventListener('click', async () => {
-            const nameInput = document.getElementById('nameInput').value.trim();
-            if (!nameInput) return showResult('请输入姓名', 'error');
-            const encoded = encode(nameInput);
-            const btn = document.getElementById('drawBtn');
-            btn.classList.add('disabled');
+        const { data: cfg } = await api('GET', '/config?id=eq.1&select=data');
+        if (cfg && cfg.length > 0 && cfg[0].data.pools) {
+            const pools = cfg[0].data.pools;
+            csv += '\n剩余未抽号码\n';
+            csv += `押运组: ${pools.group1?.join(',') || '无'}\n`;
+            csv += `技防组: ${pools.group2?.join(',') || '无'}\n`;
+            csv += `人防组: ${pools.group3?.join(',') || '无'}\n`;
+        }
 
-            try {
-                const { data: exist } = await api('GET', `/results?name=eq.${encodeURIComponent(encoded)}&select=*`);
-                if (exist && exist.length > 0) {
-                    const rec = exist[0];
-                    return showResult(`${nameInput} 已抽过：${rec.number}号（${GROUP_MAP[rec.group] || rec.group}）`, 'warning');
-                }
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = '抽签结果.csv';
+        a.click();
+    });
 
-                const { data: cfg } = await api('GET', '/config?id=eq.1&select=data');
-                if (!cfg || cfg.length === 0 || !cfg[0].data.names.group1) {
-                    throw new Error('抽签尚未开始，请等待管理员设置。');
-                }
-                const config = cfg[0].data;
-                const { names, pools } = config;
+    // 清除所有数据
+    document.getElementById('clearBtn').addEventListener('click', async () => {
+        if (!confirm('确定要清除云端所有名单和结果吗？')) return;
+        await api('DELETE', '/results?id=gt.0');
+        await api('PATCH', '/config?id=eq.1', { data: { names: {}, pools: {} } });
+        alert('已清除所有数据。');
+    });
 
-                let groupKey = null;
-                if (names.group1.includes(encoded)) groupKey = 'group1';
-                else if (names.group2.includes(encoded)) groupKey = 'group2';
-                else if (names.group3.includes(encoded)) groupKey = 'group3';
-                else return showResult('您不在名单中', 'error');
+    // ================= 用户抽签 =================
+    document.getElementById('drawBtn').addEventListener('click', async () => {
+        const nameInput = document.getElementById('nameInput').value.trim();
+        if (!nameInput) return showResult('请输入姓名', 'error');
+        const encoded = encode(nameInput);
+        const btn = document.getElementById('drawBtn');
+        btn.classList.add('disabled');
 
-                const pool = pools[groupKey];
-                if (!pool.length) return showResult('该组号码已抽完', 'error');
-
-                const newPool = [...pool];
-                const number = newPool.pop();
-                pools[groupKey] = newPool;
-
-                const { error: rpcErr } = await api('POST', '/rpc/draw_lottery', {
-                    p_name: encoded,
-                    p_group: groupKey,
-                    p_number: number,
-                    p_new_pools: pools
-                });
-                if (rpcErr) throw new Error(rpcErr.message);
-
-                showResult(`${nameInput} 抽到 ${number}号（${GROUP_MAP[groupKey]}）`, 'success');
-                document.getElementById('nameInput').value = '';
-            } catch (err) {
-                console.error(err);
-                showResult(err.message || '抽签失败', 'error');
-            } finally {
-                btn.classList.remove('disabled');
+        try {
+            // 检查是否已抽过
+            const { data: exist } = await api('GET', `/results?name=eq.${encodeURIComponent(encoded)}&select=*`);
+            if (exist && exist.length > 0) {
+                const rec = exist[0];
+                return showResult(`${nameInput} 已抽过：${rec.number}号（${GROUP_MAP[rec.group] || rec.group}）`, 'warning');
             }
-        });
 
-        // 导出 CSV
-        document.getElementById('exportBtn').addEventListener('click', async () => {
-            const { data: results, error } = await api('GET', '/results?select=*&order=id.asc');
-            if (error) return alert('导出失败：' + error.message);
-            if (!results || results.length === 0) return alert('暂无抽签结果');
-
-            let csv = '\uFEFF姓名,组别,号码\n';
-            results.forEach(r => { csv += `${decode(r.name)},${GROUP_MAP[r.group] || r.group},${r.number}\n`; });
-
+            // 获取配置
             const { data: cfg } = await api('GET', '/config?id=eq.1&select=data');
-            if (cfg && cfg.length > 0 && cfg[0].data.pools) {
-                const pools = cfg[0].data.pools;
-                csv += '\n剩余未抽号码\n';
-                csv += `押运组: ${pools.group1?.join(',') || '无'}\n`;
-                csv += `技防组: ${pools.group2?.join(',') || '无'}\n`;
-                csv += `人防组: ${pools.group3?.join(',') || '无'}\n`;
+            if (!cfg || cfg.length === 0 || !cfg[0].data.names.group1) {
+                throw new Error('抽签尚未开始，请等待管理员设置。');
             }
+            const config = cfg[0].data;
+            const { names, pools } = config;
 
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = '抽签结果.csv';
-            a.click();
-        });
+            let groupKey = null;
+            if (names.group1.includes(encoded)) groupKey = 'group1';
+            else if (names.group2.includes(encoded)) groupKey = 'group2';
+            else if (names.group3.includes(encoded)) groupKey = 'group3';
+            else return showResult('您不在名单中', 'error');
 
-        // 清除
-        document.getElementById('clearBtn').addEventListener('click', async () => {
-            if (!confirm('确定要清除云端所有名单和结果吗？')) return;
-            await api('DELETE', '/results?id=gt.0');
-            await api('PATCH', '/config?id=eq.1', { data: { names:{}, pools:{} } });
-            alert('已清除所有数据。');
-        });
+            const pool = pools[groupKey];
+            if (!pool.length) return showResult('该组号码已抽完', 'error');
 
-        if (window.location.search.includes('admin=true')) {
-            document.getElementById('adminPanel').style.display = 'block';
+            // 抽取号码
+            const newPool = [...pool];
+            const number = newPool.pop();
+            pools[groupKey] = newPool;
+
+            // 调用数据库函数（原子操作）
+            const { error: rpcErr } = await api('POST', '/rpc/draw_lottery', {
+                p_name: encoded,
+                p_group: groupKey,
+                p_number: number,
+                p_new_pools: pools
+            });
+            if (rpcErr) throw new Error(rpcErr.message);
+
+            showResult(`${nameInput} 抽到 ${number}号（${GROUP_MAP[groupKey]}）`, 'success');
+            document.getElementById('nameInput').value = '';
+        } catch (err) {
+            console.error(err);
+            showResult(err.message || '抽签失败', 'error');
+        } finally {
+            btn.classList.remove('disabled');
         }
+    });
 
-        document.getElementById('nameInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') document.getElementById('drawBtn').click();
-        });
+    // 管理员模式
+    if (window.location.search.includes('admin=true')) {
+        document.getElementById('adminPanel').style.display = 'block';
+    }
 
-        // 微信提示
-        if (/micromessenger/i.test(navigator.userAgent)) {
-            document.getElementById('wechatTip').style.display = 'block';
-        }
+    // 回车抽签
+    document.getElementById('nameInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') document.getElementById('drawBtn').click();
+    });
+
+    // 微信提醒
+    if (/micromessenger/i.test(navigator.userAgent)) {
+        document.getElementById('wechatTip').style.display = 'block';
     }
 </script>
 </body>
