@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>苏州市保安员职业技能竞赛抽签</title>
+    <!-- 引入 Supabase JS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -45,6 +46,7 @@
     </div>
     <div class="result" id="resultDisplay"></div>
 
+    <!-- 管理员面板（通过 ?admin=true 显示） -->
     <div class="admin-panel" id="adminPanel">
         <h3>🔧 管理员设置</h3>
         <p style="font-size:13px;color:#7f8c8d;">粘贴名单后点击“保存名单”，立即生效。</p>
@@ -67,17 +69,22 @@
 </div>
 
 <script>
-    // ==================== 替换你的 Supabase 信息 ====================
-    const SUPABASE_URL = 'https://你的项目ID.supabase.co';
-    const SUPABASE_ANON_KEY = '你的anon public key';
-    // ==============================================================
+    // ==================== ⚠️ 必须替换成你自己的 Supabase 项目信息 ====================
+    const SUPABASE_URL = 'https://你的项目ID.supabase.co';   // 你的 Project URL
+    const SUPABASE_ANON_KEY = '你的anon public key';        // 你的 anon public key
+    // =================================================================================
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // 正确初始化 Supabase 客户端（注意这里用 window.supabase 调用 SDK）
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // 为了方便后续使用，直接暴露一个全局变量 supabase
+    window.supabaseClient = supabaseClient;
 
+    // 微信环境提示
     if (/micromessenger/i.test(navigator.userAgent)) {
         document.getElementById('wechatTip').style.display = 'block';
     }
 
+    // 辅助函数：显示结果信息
     function showResult(msg, type) {
         const div = document.getElementById('resultDisplay');
         div.innerText = msg;
@@ -85,119 +92,59 @@
         div.style.display = 'block';
     }
 
+    // 生成并洗牌号码池
     function createPools() {
-        const pool1 = Array.from({length:15}, (_,i)=>i+1);
-        const pool2 = Array.from({length:8}, (_,i)=>i+16);
-        const pool3 = Array.from({length:79}, (_,i)=>i+24);
-        const shuffle = arr => { for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];} return arr; };
+        const pool1 = Array.from({ length: 15 }, (_, i) => i + 1);
+        const pool2 = Array.from({ length: 8 }, (_, i) => i + 16);
+        const pool3 = Array.from({ length: 79 }, (_, i) => i + 24);
+        const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
         return { group1: shuffle(pool1), group2: shuffle(pool2), group3: shuffle(pool3) };
     }
 
-    // 管理员保存
+    // ================= 管理员功能 =================
     document.getElementById('saveBtn').addEventListener('click', async () => {
-        const g1 = document.getElementById('group1Names').value.trim().split('\n').map(s=>s.trim()).filter(s=>s);
-        const g2 = document.getElementById('group2Names').value.trim().split('\n').map(s=>s.trim()).filter(s=>s);
-        const g3 = document.getElementById('group3Names').value.trim().split('\n').map(s=>s.trim()).filter(s=>s);
-        if (g1.length !== 15) return alert('押运组需15人，当前'+g1.length+'人');
-        if (g2.length !== 8) return alert('技防组需8人，当前'+g2.length+'人');
-        if (g3.length !== 79) return alert('人防组需79人，当前'+g3.length+'人');
+        const g1 = document.getElementById('group1Names').value.trim().split('\n').map(s => s.trim()).filter(s => s);
+        const g2 = document.getElementById('group2Names').value.trim().split('\n').map(s => s.trim()).filter(s => s);
+        const g3 = document.getElementById('group3Names').value.trim().split('\n').map(s => s.trim()).filter(s => s);
+
+        if (g1.length !== 15) return alert('押运组需15人，当前 ' + g1.length + ' 人');
+        if (g2.length !== 8) return alert('技防组需8人，当前 ' + g2.length + ' 人');
+        if (g3.length !== 79) return alert('人防组需79人，当前 ' + g3.length + ' 人');
 
         const pools = createPools();
         const data = { names: { group1: g1, group2: g2, group3: g3 }, pools };
 
-        const { error: updateError } = await supabase
+        // 更新 config 表（id=1）
+        const { error: updateError } = await supabaseClient
             .from('config')
             .update({ data })
             .eq('id', 1);
         if (updateError) return alert('保存失败：' + updateError.message);
 
-        // 清空抽签结果
-        await supabase.from('results').delete().neq('id', 0);
+        // 清空之前的抽签结果
+        await supabaseClient.from('results').delete().neq('id', 0);
 
-        alert('名单已保存，号码池已初始化！');
+        alert('名单已保存，号码池已初始化！现在参与者可以抽签了。');
         document.getElementById('group1Names').value = '';
         document.getElementById('group2Names').value = '';
         document.getElementById('group3Names').value = '';
     });
 
-    // 用户抽签
-    document.getElementById('drawBtn').addEventListener('click', async () => {
-        const name = document.getElementById('nameInput').value.trim();
-        if (!name) return showResult('请输入姓名', 'error');
-        const btn = document.getElementById('drawBtn');
-        btn.classList.add('disabled');
-
-        try {
-            // 检查是否已抽过
-            const { data: existing, error: queryError } = await supabase
-                .from('results')
-                .select('*')
-                .eq('name', name)
-                .maybeSingle();
-            if (queryError) throw new Error(queryError.message);
-            if (existing) {
-                return showResult(`${name} 已抽过：${existing.number}号（${existing.group}）`, 'warning');
-            }
-
-            // 获取配置
-            const { data: configData, error: configError } = await supabase
-                .from('config')
-                .select('data')
-                .eq('id', 1)
-                .single();
-            if (configError || !configData?.data) throw new Error('抽签尚未开始，请等待管理员设置。');
-
-            const config = configData.data;
-            const { names, pools } = config;
-
-            let groupKey = null;
-            if (names.group1.includes(name)) groupKey = 'group1';
-            else if (names.group2.includes(name)) groupKey = 'group2';
-            else if (names.group3.includes(name)) groupKey = 'group3';
-            else return showResult('您不在名单中，无法抽签', 'error');
-
-            const pool = pools[groupKey];
-            if (!pool || pool.length === 0) return showResult('该组号码已抽完', 'error');
-
-            const newPool = [...pool];
-            const drawnNum = newPool.pop();
-            pools[groupKey] = newPool;
-
-            const groupDisplay = { group1: '押运组', group2: '技防组', group3: '人防组' }[groupKey];
-
-            // 使用数据库事务函数
-            const { error: drawError } = await supabase.rpc('draw_lottery', {
-                p_name: name,
-                p_group: groupDisplay,
-                p_number: drawnNum,
-                p_new_pools: pools
-            });
-            if (drawError) throw new Error(drawError.message);
-
-            showResult(`${name} 抽到 ${drawnNum}号（${groupDisplay}）`, 'success');
-            document.getElementById('nameInput').value = '';
-        } catch (err) {
-            console.error(err);
-            showResult(err.message || '抽签失败，请重试', 'error');
-        } finally {
-            btn.classList.remove('disabled');
-        }
-    });
-
-    // 导出
+    // 导出结果 CSV
     document.getElementById('exportBtn').addEventListener('click', async () => {
         try {
-            const { data: results, error } = await supabase
+            const { data: results, error } = await supabaseClient
                 .from('results')
                 .select('name, group, number')
                 .order('id', { ascending: true });
             if (error) throw error;
-            if (results.length === 0) return alert('暂无抽签结果');
+            if (!results || results.length === 0) return alert('暂无抽签结果');
 
             let csv = '\uFEFF姓名,组别,号码\n';
             results.forEach(r => { csv += `${r.name},${r.group},${r.number}\n`; });
 
-            const { data: configData } = await supabase.from('config').select('data').eq('id', 1).single();
+            // 附加剩余号码
+            const { data: configData } = await supabaseClient.from('config').select('data').eq('id', 1).single();
             if (configData?.data?.pools) {
                 const pools = configData.data.pools;
                 csv += '\n剩余未抽号码\n';
@@ -205,7 +152,8 @@
                 csv += `技防组: ${pools.group2?.join(',') || '无'}\n`;
                 csv += `人防组: ${pools.group3?.join(',') || '无'}\n`;
             }
-            const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
             a.download = '抽签结果.csv';
@@ -215,18 +163,98 @@
         }
     });
 
-    // 清除
+    // 清除所有数据
     document.getElementById('clearBtn').addEventListener('click', async () => {
-        if (!confirm('确定要清除云端所有名单和结果吗？')) return;
-        await supabase.from('results').delete().neq('id', 0);
-        await supabase.from('config').update({ data: { names: {}, pools: {} } }).eq('id', 1);
-        alert('所有数据已清除。');
+        if (!confirm('确定要清除云端所有名单和抽签结果吗？此操作不可恢复！')) return;
+        await supabaseClient.from('results').delete().neq('id', 0);
+        await supabaseClient.from('config').update({ data: { names: {}, pools: {} } }).eq('id', 1);
+        alert('已清除所有数据。');
     });
 
+    // ================= 用户抽签 =================
+    document.getElementById('drawBtn').addEventListener('click', async () => {
+        const name = document.getElementById('nameInput').value.trim();
+        if (!name) return showResult('请输入姓名', 'error');
+        const btn = document.getElementById('drawBtn');
+        btn.classList.add('disabled');
+
+        try {
+            // 检查是否已抽过
+            const { data: existing, error: queryError } = await supabaseClient
+                .from('results')
+                .select('*')
+                .eq('name', name)
+                .maybeSingle();
+            if (queryError) throw new Error(queryError.message);
+            if (existing) {
+                showResult(`${name} 已抽过：${existing.number}号（${existing.group}）`, 'warning');
+                btn.classList.remove('disabled');
+                return;
+            }
+
+            // 获取配置（名单和号码池）
+            const { data: configData, error: configError } = await supabaseClient
+                .from('config')
+                .select('data')
+                .eq('id', 1)
+                .single();
+            if (configError || !configData?.data) {
+                throw new Error('抽签尚未开始，请等待管理员设置。');
+            }
+
+            const config = configData.data;
+            const { names, pools } = config;
+
+            // 确定组别
+            let groupKey = null;
+            if (names.group1.includes(name)) groupKey = 'group1';
+            else if (names.group2.includes(name)) groupKey = 'group2';
+            else if (names.group3.includes(name)) groupKey = 'group3';
+            else {
+                showResult('您不在参与名单中，无法抽签', 'error');
+                btn.classList.remove('disabled');
+                return;
+            }
+
+            const currentPool = pools[groupKey];
+            if (!currentPool || currentPool.length === 0) {
+                showResult('该组号码已抽完', 'error');
+                btn.classList.remove('disabled');
+                return;
+            }
+
+            // 从号码池中取一个号码（pop 最后一个元素）
+            const newPool = [...currentPool];
+            const drawnNum = newPool.pop();
+            pools[groupKey] = newPool;
+
+            const groupDisplay = { group1: '押运组', group2: '技防组', group3: '人防组' }[groupKey];
+
+            // 调用数据库函数，原子性地写入结果并更新号码池
+            const { error: rpcError } = await supabaseClient.rpc('draw_lottery', {
+                p_name: name,
+                p_group: groupDisplay,
+                p_number: drawnNum,
+                p_new_pools: pools
+            });
+            if (rpcError) throw new Error(rpcError.message);
+
+            showResult(`${name} 抽到 ${drawnNum}号（${groupDisplay}）`, 'success');
+            document.getElementById('nameInput').value = '';
+        } catch (err) {
+            console.error('抽签出错：', err);
+            showResult(err.message || '抽签失败，请重试', 'error');
+        } finally {
+            btn.classList.remove('disabled');
+        }
+    });
+
+    // 管理员模式切换
     if (window.location.search.includes('admin=true')) {
         document.getElementById('adminPanel').style.display = 'block';
     }
 
+    // 支持回车键抽签
     document.getElementById('nameInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') document.getElementById('drawBtn').click();
     });
